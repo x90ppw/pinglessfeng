@@ -1,0 +1,13 @@
+{
+  "name": "pingless-keepalive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pingless (dash.pingless.org) free server auto-renew + daily coins, with Telegram notify",
+  "main": "renew.js",
+  "scripts": {
+    "start": "node renew.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
