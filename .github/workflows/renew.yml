@@ -1,0 +1,48 @@
+name: Pingless Keepalive
+
+on:
+  schedule:
+    # 每 6 小時一次 (UTC 00/06/12/18 = 北京 08/14/20/02)
+    # 續期窗口為剩餘 24h 內, 每天有 4 次機會足夠
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_renew:
+        description: '強制嘗試續期 (無視 24h 窗口)'
+        required: false
+        default: 'false'
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'LAST_RUN'
+      - '**.md'
+
+permissions:
+  contents: write
+
+jobs:
+  renew:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run renew & daily coins
+        env:
+          PINGLESS_ACCOUNTS: ${{ secrets.PINGLESS_ACCOUNTS }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          FORCE_RENEW: ${{ github.event.inputs.force_renew == 'true' && '1' || '0' }}
+        run: node renew.js
+
+      - name: Keepalive commit (防 GitHub 停用 scheduled workflow)
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          date -u +"last_run: %Y-%m-%dT%H:%M:%SZ" > LAST_RUN
+          git add LAST_RUN
+          git diff --cached --quiet || (git commit -m "keepalive: $(date -u +%F)" && git push)
